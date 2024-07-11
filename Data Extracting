@@ -1,0 +1,177 @@
+#Primer import para extraccion de datos
+from datetime import date, timedelta
+import pandas as pd
+from binance import Client
+import matplotlib.pyplot as plt
+pip install ta-Lib
+
+#Segundo import es para visulaizar datos
+import matplotlib.pyplot as plt
+
+#Tercer import para descargar datos de S&P500 y hacer correlaciones posteriores
+!pip install yfinance
+import yfinance as yf
+import json, requests, csv
+from datetime import datetime
+
+#Cuarto import para la generacion de graficos de maximos y minimos
+import numpy as np
+from scipy.signal import argrelextrema
+
+#Generamos una funcion que es la que va a sacar la info de la web
+today = date.today()
+yesterday = today - timedelta(days=1)
+#Recordar que es cada hora. Si quisiera diario le debo poner "1d"en timeframe
+def criptodata(dataticker):
+    api_key = "H1rZMtd9tWIrVCgxDS9Yo7HJdgI1GSSegc4OkBhqKeoy294zoDRmn1Fg2x7oJS0o"
+    api_secret = "phJzM7r7ts3fXjKQV4ihgcff6UiLk3oj0CvdtczZj4A85gjkxk8Su3BPZf1qfmJq"
+    #Se saca en: https://testnet.binance.vision/
+    client = Client(api_key, api_secret)
+    price = client.get_symbol_ticker(symbol=dataticker)
+    print(price)
+    asset = dataticker
+    start = "2023.01.01"
+    end = end = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    timeframe = "1h"
+    df = pd.DataFrame(client.get_historical_klines(asset,timeframe,start,end))
+    df = df.iloc[:,:6]
+    df.columns = ["Date","Open","High","Low","Close","Volume"]
+    df = df.set_index("Date")
+    df.index = pd.to_datetime(df.index, unit="ms")
+    df = df.astype("float")
+    return (df)
+###Les pongo michis porque no necesito realmente descargar todo. Solo quiero generar el df y guardarlo posteriormente.
+    #save to csv:
+    ##df.to_csv(dataticker + ".csv", encoding='utf-8')
+    ##print("Data extraction finished :)")
+##list = ["BTCUSDT","ETHUSDT","ADAUSDT","XRPUSDT"]
+##for i in list:
+    ##criptodata(i)
+
+#Generamos una funcion que es la que va a sacar la info de la web
+today = date.today()
+yesterday = today - timedelta(days=1)
+#Recordar que es cada hora. Si quisiera diario le debo poner "1d"en timeframe
+def criptodata_15min(dataticker):
+    api_key = "H1rZMtd9tWIrVCgxDS9Yo7HJdgI1GSSegc4OkBhqKeoy294zoDRmn1Fg2x7oJS0o"
+    api_secret = "phJzM7r7ts3fXjKQV4ihgcff6UiLk3oj0CvdtczZj4A85gjkxk8Su3BPZf1qfmJq"
+    #Se saca en: https://testnet.binance.vision/
+    client = Client(api_key, api_secret)
+    price = client.get_symbol_ticker(symbol=dataticker)
+    print(price)
+    asset = dataticker
+    start = "2023.05.01"
+    end = end = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    timeframe = "15m"
+    df = pd.DataFrame(client.get_historical_klines(asset,timeframe,start,end))
+    df = df.iloc[:,:6]
+    df.columns = ["Date","Open","High","Low","Close","Volume"]
+    df = df.set_index("Date")
+    df.index = pd.to_datetime(df.index, unit="ms")
+    df = df.astype("float")
+    return (df)
+###Les pongo michis porque no necesito realmente descargar todo. Solo quiero generar el df y guardarlo posteriormente.
+    #save to csv:
+    ##df.to_csv(dataticker + ".csv", encoding='utf-8')
+    ##print("Data extraction finished :)")
+##list = ["BTCUSDT","ETHUSDT","ADAUSDT","XRPUSDT"]
+##for i in list:
+    ##criptodata(i)
+
+def calculate_sar(high, low, acceleration=0.02, maximum=0.2):
+    # Determinar la dirección inicial
+    uptrend = True if high[1] > high[0] else False
+
+    # Inicializar el SAR y EP (Extreme Point)
+    sar = low[0] if uptrend else high[0]
+    ep = high[1] if uptrend else low[1]
+
+    # Lista para almacenar los valores SAR
+    sar_values = [sar]
+
+    af = acceleration
+
+    for i in range(1, len(high)):
+        prev_sar = sar
+        sar = sar + af * (ep - sar)
+
+        if uptrend:
+            sar = min(sar, low[i-1])
+            if high[i] > ep:
+                ep = high[i]
+                af = min(af + acceleration, maximum)
+            if high[i] < sar:
+                uptrend = False
+                sar = ep
+                ep = low[i]
+                af = acceleration
+        else:
+            sar = max(sar, high[i-1])
+            if low[i] < ep:
+                ep = low[i]
+                af = min(af + acceleration, maximum)
+            if low[i] > sar:
+                uptrend = True
+                sar = ep
+                ep = high[i]
+                af = acceleration
+
+        sar_values.append(sar)
+
+    return sar_values
+
+#ESTA ES LA FORMULA EXTRACTORA CON MAYORES VARIABLES)
+def criptodata(dataticker, timeframe, start_date, end_date=None):
+    api_key = "H1rZMtd9tWIrVCgxDS9Yo7HJdgI1GSSegc4OkBhqKeoy294zoDRmn1Fg2x7oJS0o"
+    api_secret = "phJzM7r7ts3fXjKQV4ihgcff6UiLk3oj0CvdtczZj4A85gjkxk8Su3BPZf1qfmJq"
+    
+    client = Client(api_key, api_secret)
+    price = client.get_symbol_ticker(symbol=dataticker)
+    print(price)
+    asset = dataticker
+    start = start_date
+    if end_date is None:
+        end = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    else:
+        end = end_date
+    df = pd.DataFrame(client.get_historical_klines(asset, timeframe, start, end))
+    df = df.iloc[:,:6]
+    df.columns = ["Date","Open","High","Low","Close","Volume"]
+    df = df.set_index("Date")
+    df.index = pd.to_datetime(df.index, unit="ms")
+    df = df.astype("float")
+    
+     # Calcula el SAR manualmente
+    df['SAR'] = calculate_sar(df['High'].values, df['Low'].values)
+
+    # Identifica si el SAR está por encima o por debajo del precio de cierre
+    df['SAR_Position'] = ['above' if sar > close else 'below' for sar, close in zip(df['SAR'], df['Close'])]
+    
+    return df
+
+#Definimos la cripto de la que queremos sacar informacion.
+df_floki_1d = criptodata("FLOKIUSDT","1d","2023.01.01")
+df_floki_1d.to_csv('df_floki_1d.csv',index=False)
+
+#Definimos la cripto de la que queremos sacar informacion.
+df_xvg_4h = criptodata("XVGUSDT","4h","2023.08.15")
+df_xvg_4h.to_csv('df_xvg_4h.csv',index=False)
+
+import talib
+
+def criptodata_con_sar(dataticker, timeframe, start_date, end_date=None):
+    # ... (el código original de tu función) ...
+
+    # Calcula el SAR
+    df['SAR'] = talib.SAR(df['High'].values, df['Low'].values, acceleration=0.02, maximum=0.2)
+
+    # Identifica si el SAR está por encima o por debajo del precio de cierre
+    df['SAR_Position'] = ['above' if sar > close else 'below' for sar, close in zip(df['SAR'], df['Close'])]
+
+    return df
+
+#Guardamos en cvs lo obtenido
+
+df_btc.to_csv('df_btc.csv', index=False)
+
+
