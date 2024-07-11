@@ -1,0 +1,171 @@
+# Graficar la columna Open de df_btc
+plt.plot(df_btc['Open'])
+
+# Etiquetas del eje x e y
+plt.xlabel('Fecha')
+plt.ylabel('Precio en USDT')
+plt.title('Precio de Bitcoin en USDT')
+plt.xticks(rotation=45)
+
+# Mostrar el gráfico
+plt.show()
+
+def sp500(interval="1d"):
+    start_date = datetime(datetime.now().year, 1, 1).strftime('%Y-%m-%d')
+    sp500df= yf.Ticker("^GSPC").history(start=start_date, interval=interval)   
+    #print(sp500df)
+    #sp500df.to_csv("sp500.csv")
+    #print("SP500 csv extraction Finished :)")
+    return sp500df
+def gold(interval="1d"):
+    start_date = datetime(datetime.now().year, 1, 1).strftime('%Y-%m-%d')
+    golddf= yf.Ticker("GC=F").history(start=start_date,interval=interval)   
+    #print(golddata)
+    #golddata.to_csv("gold.csv")
+    #print("Gold csv extraction Finished :)")
+    return golddf
+sp500()
+gold()
+
+#gold = json.loads(requests.get("https://forex-data-feed.swissquote.com/public-quotes/bboquotes/instrument/XAU/USD").text)
+#data = gold[0]
+#dataextract = data["spreadProfilePrices"]
+#dataextract = dataextract[0]["ask"]
+#print("Data:")
+#print(dataextract)
+#f = open ('goldrealtime.csv','w')
+#f.write(str(dataextract))
+#f.close()
+#print("Gold real time csv extraction Finished :)")
+
+#Sacando por dia y hora
+sp500_hora=sp500(interval="1h")
+sp500_dia=sp500(interval="1d")
+gold_hora=gold(interval="1h")
+gold_dia=gold(interval="1d")
+
+#No necesito leer ningun pdf, porque lo tengo en df
+#df = pd.read_csv("ETHUSDT.csv")
+# get the last 30 prices
+last_30_prices = df_btc["Close"].tail(240)
+# calculate the average of the last 30 prices
+mean_price = last_30_prices.mean()
+# calculate the standard deviation of prices
+std_price = last_30_prices.std()
+# calculating support and resistance levels
+support_price = mean_price - std_price
+resistance_price = mean_price + std_price
+# last price data
+last_price = df_btc["Close"].iloc[-1]
+# comparar el último precio con los niveles de soporte y resistencia
+if last_price > resistance_price:
+    status = "resistance"
+    difference = last_price - resistance_price
+elif last_price < support_price:
+    status = "support"
+    difference = support_price - last_price
+else:
+    status = "neutral"
+    difference = 0
+# 
+print(f"The last price ({last_price}) is {status} with the difference {difference}.")
+if status=="resistance":
+    print("Send order to Sell")
+elif status=="support":
+    print("Send order Buy")
+else:
+    print("Hold/Or nothing")
+
+# obtener los últimos 240 precios de cierre
+horas=1000
+last_prices = df_btc["Close"].tail(horas)
+
+# calculate the average of the last 240 prices
+mean_price = last_prices.mean()
+# calculate the standard deviation of prices
+std_price = last_prices.std()
+# calculating support and resistance levels
+support_price = mean_price - std_price
+resistance_price = mean_price + std_price
+
+rolling_mean_5 = last_prices.rolling(window=5).mean()
+rolling_mean_30 = last_prices.rolling(window=30).mean()
+rolling_mean_100 = last_prices.rolling(window=100).mean()
+# crear una figura y un eje
+fig, ax = plt.subplots(figsize=(20, 6))
+
+# trazar los precios en el eje
+ax.plot(last_prices, label=f"Últimos {horas} precios de cierre de BTCUSDT")
+ax.plot(rolling_mean_5, label="Media móvil de 5 días")
+ax.plot(rolling_mean_30, label="Media móvil de 30 días")
+ax.plot(rolling_mean_100, label="Media móvil de 100 días")
+ax.axhline(y=support_price, color="g", label="Soporte")
+ax.axhline(y=resistance_price, color="r", label="Resistencia")
+
+# agregar la leyenda
+ax.legend()
+
+# agregar etiquetas al gráfico
+ax.set_title(f"Últimos {horas} precios de cierre de BTCUSDT")
+ax.set_xlabel("Días")
+ax.set_ylabel("Precio de cierre")
+plt.xticks(rotation=45)
+# mostrar el gráfico
+plt.show()
+
+#Ahora todo lo pongo en una funcion.
+def grafica(df_name,df, horas, medias_moviles=[5, 30, 100],std_moviles=None):
+    # obtener los últimos precios de cierre
+    last_prices = df["Close"].tail(horas)
+
+    # calcular los estadísticos
+    mean_price = last_prices.mean()
+    std_price = last_prices.std()
+    support_price = mean_price - std_price
+    resistance_price = mean_price + std_price
+
+    # calcular las medias móviles
+    medias_moviles_dict = {}
+    std_moviles_dict={}
+    for medias in medias_moviles:
+        medias_moviles_dict[medias] = last_prices.rolling(window=medias).mean()
+        if std_moviles is not None:
+            std_moviles_dict[medias] = last_prices.rolling(window=medias).std()
+
+    # crear una figura y un eje
+    fig, (ax1,ax2) = plt.subplots(nrows=2,ncols=1,figsize=(20, 10),sharex=True)
+
+    # trazar los precios y las medias móviles en el eje
+    ax1.plot(last_prices, label=f"Últimos {horas} precios de cierre de BTCUSDT")
+    for medias in medias_moviles_dict:
+        ax1.plot(medias_moviles_dict[medias], label=f"Media móvil de {medias} horas")
+    ax1.axhline(y=support_price, color="g", label="Soporte")
+    ax1.axhline(y=resistance_price, color="r", label="Resistencia")
+
+    # agregar la leyenda
+    ax1.legend()
+
+    # agregar etiquetas al gráfico
+    ax1.set_title(f"Últimos {horas} precios de cierre de {df_name}")
+    #ax1.set_xlabel("Días")
+    ax1.set_ylabel("Precio de cierre")
+    
+    # trazar las desviaciones estándar móviles como una banda alrededor de la media móvil en el segundo eje
+    if std_moviles is not None:
+        for medias in medias_moviles_dict:
+            upper_band = medias_moviles_dict[medias] + 2 * std_moviles_dict[medias]
+            lower_band = medias_moviles_dict[medias] - 2 * std_moviles_dict[medias]
+            ax2.fill_between(medias_moviles_dict[medias].index, upper_band, lower_band, alpha=0.2,
+                             label=f"Banda de desviación estándar de {medias} horas")
+    
+        # agregar la leyenda al segundo eje
+        ax2.legend()
+        # agregar etiquetas al segundo eje
+        ax2.set_xlabel("Días")
+        ax2.set_ylabel("Desviación estándar móvil")
+    #plt.xticks(rotation=45)
+
+    # mostrar el gráfico
+    plt.show()
+
+grafica("BTCUSDT",df_btc,horas=500,medias_moviles=[10,20,100], std_moviles=[10,20,100])
